@@ -24,12 +24,7 @@ import qualified Data.Set as S
 -- >>> instance Arbitrary a => Arbitrary (List a) where arbitrary = P.fmap listh arbitrary
 
 -- A `State` is a function from a state value `s` to (a produced value `a`, and a resulting state `s`).
-newtype State s a =
-  State {
-    runState ::
-      s
-      -> (a, s)
-  }
+newtype State s a = State { runState :: s -> (a, s) }
 
 -- | Run the `State` seeded with `s` and retrieve the resulting state.
 --
