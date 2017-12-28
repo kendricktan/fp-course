@@ -109,8 +109,8 @@ instance Monad (State s) where
 -- >>> let p x = (\s -> (const $ pure (x == 'i')) =<< put (1+s)) =<< get in runState (findM p $ listh ['a'..'h']) 0
 -- (Empty,8)
 findM :: Monad f => (a -> f Bool) -> List a -> f (Optional a)
-findM =
-  error "todo: Course.State#findM"
+findM f (x :. xs) = (\b -> if b then return (Full x) else findM f xs) =<< f x
+findM _ Nil       = return Empty
 
 -- | Find the first element in a `List` that repeats.
 -- It is possible that no element repeats, hence an `Optional` result.
@@ -119,12 +119,17 @@ findM =
 --
 -- prop> case firstRepeat xs of Empty -> let xs' = hlist xs in nub xs' == xs'; Full x -> length (filter (== x) xs) > 1
 -- prop> case firstRepeat xs of Empty -> True; Full x -> let (l, (rx :. rs)) = span (/= x) xs in let (l2, r2) = span (/= x) rs in let l3 = hlist (l ++ (rx :. Nil) ++ l2) in nub l3 == l3
-firstRepeat ::
-  Ord a =>
-  List a
-  -> Optional a
-firstRepeat =
-  error "todo: Course.State#firstRepeat"
+firstRepeat :: Ord a => List a -> Optional a
+firstRepeat l = eval (findState l) (S.fromList [])
+
+findState :: Ord a => List a -> State (S.Set a) (Optional a)
+findState Nil       = return Empty
+findState (x :. xs) = do
+    m <- get
+    case S.member x m of
+      True -> return (Full x)
+      False -> State (P.const (Empty, S.insert x m))
+    findState xs
 
 -- | Remove all duplicate elements in a `List`.
 -- /Tip:/ Use `filtering` and `State` with a @Data.Set#Set@.
@@ -132,12 +137,19 @@ firstRepeat =
 -- prop> firstRepeat (distinct xs) == Empty
 --
 -- prop> distinct xs == distinct (flatMap (\x -> x :. x :. Nil) xs)
-distinct ::
-  Ord a =>
-  List a
-  -> List a
-distinct =
-  error "todo: Course.State#distinct"
+distinct :: Ord a => List a -> List a
+distinct l = (listh . S.toList) s
+    where s = exec (filterState l) (S.fromList [])
+
+filterState :: Ord a => List a -> State (S.Set a) (Optional a)
+filterState Nil       = get >>= (\x -> State (P.const (Empty, x)))
+filterState (x :. xs) = do
+    m <- get
+    case S.member x m of
+      True  -> State (P.const (Empty, m))
+      False -> State (P.const (Empty, S.insert x m))
+    findState xs
+
 
 -- | A happy number is a positive integer, where the sum of the square of its digits eventually reaches 1 after repetition.
 -- In contrast, a sad number (not a happy number) is where the sum of the square of its digits never reaches 1
@@ -160,8 +172,5 @@ distinct =
 --
 -- >>> isHappy 44
 -- True
-isHappy ::
-  Integer
-  -> Bool
-isHappy =
-  error "todo: Course.State#isHappy"
+isHappy :: Integer -> Bool
+isHappy = error "todo: Course.State#isHappy"
